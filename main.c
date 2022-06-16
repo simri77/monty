@@ -1,50 +1,74 @@
 #include "monty.h"
-stack_t *head = NULL;
+#include "lists.h"
+
+data_t data = DATA_INIT;
 
 /**
- * main - function to run monty files
+ * monty - helper function for main function
+ * @args: pointer to struct of arguments from main
  *
- * @argc: int number of args
- * @argv: char const * to args
- *
- * Return: 00
+ * Description: opens and reads from the file
+ * containing the opcodes, and calls the function
+ * that will find the corresponding executing function
  */
-
-int main(int argc, char const *argv[])
+void monty(args_t *args)
 {
-	FILE *fp;
-	char *linestr = NULL;
-	char *opcode = NULL;
-	char *strtok_address = NULL;
-	char *data;
-	size_t n;
-	ssize_t charsprinted;
-	unsigned int counter = 1;
+	size_t len = 0;
+	int get = 0;
+	void (*code_func)(stack_t **, unsigned int);
 
-	if (argc != 2)
+	if (args->ac != 2)
 	{
-		fprintf(stderr, "USAGE: monty file\n");
+		dprintf(STDERR_FILENO, USAGE);
 		exit(EXIT_FAILURE);
 	}
-	fp = fopen(argv[1], "r");
-	if (fp == NULL)
+	data.fptr = fopen(args->av, "r");
+	if (!data.fptr)
 	{
-		fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
+		dprintf(STDERR_FILENO, FILE_ERROR, args->av);
 		exit(EXIT_FAILURE);
 	}
-	while ((charsprinted = getline(&linestr, &n, fp)) != -1)
+	while (1)
 	{
-		strtok_address = linestr;
-		linestr = strtok(linestr, "\n");
-		opcode = strtok(linestr, " ");
-		data = strtok(NULL, " ");
-
-		if (opcode)
-			execute(opcode, counter, data);
-		counter++;
+		args->line_number++;
+		get = getline(&(data.line), &len, data.fptr);
+		if (get < 0)
+			break;
+		data.words = strtow(data.line);
+		if (data.words[0] == NULL || data.words[0][0] == '#')
+		{
+			free_all(0);
+			continue;
+		}
+		code_func = get_func(data.words);
+		if (!code_func)
+		{
+			dprintf(STDERR_FILENO, UNKNOWN, args->line_number, data.words[0]);
+			free_all(1);
+			exit(EXIT_FAILURE);
+		}
+		code_func(&(data.stack), args->line_number);
+		free_all(0);
 	}
-	fclose(fp);
-	free(strtok_address);
-	freestack();
-	return (0);
+	free_all(1);
+}
+
+/**
+ * main - entry point for monty bytecode interpreter
+ * @argc: number of arguments
+ * @argv: array of arguments
+ *
+ * Return: EXIT_SUCCESS or EXIT_FAILURE
+ */
+int main(int argc, char *argv[])
+{
+	args_t args;
+
+	args.av = argv[1];
+	args.ac = argc;
+	args.line_number = 0;
+
+	monty(&args);
+
+	return (EXIT_SUCCESS);
 }
