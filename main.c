@@ -1,47 +1,50 @@
 #include "monty.h"
-
-/* global struct to hold flag for queue and stack length */
-var_t var;
+stack_t *head = NULL;
 
 /**
- * main - Monty bytecode interpreter
- * @argc: number of arguments passed
- * @argv: array of argument strings
+ * main - function to run monty files
  *
- * Return: EXIT_SUCCESS on success or EXIT_FAILURE on failure
+ * @argc: int number of args
+ * @argv: char const * to args
+ *
+ * Return: 00
  */
-int main(int argc, char *argv[])
-{
-	stack_t *stack = NULL;
-	unsigned int line_number = 0;
-	FILE *fs = NULL;
-	char *lineptr = NULL, *op = NULL;
-	size_t n = 0;
 
-	var.queue = 0;
-	var.stack_len = 0;
+int main(int argc, char const *argv[])
+{
+	FILE *fp;
+	char *linestr = NULL;
+	char *opcode = NULL;
+	char *strtok_address = NULL;
+	char *data;
+	size_t n;
+	ssize_t charsprinted;
+	unsigned int counter = 1;
+
 	if (argc != 2)
 	{
-		dprintf(STDOUT_FILENO, "USAGE: monty file\n");
+		fprintf(stderr, "USAGE: monty file\n");
 		exit(EXIT_FAILURE);
 	}
-	fs = fopen(argv[1], "r");
-	if (fs == NULL)
+	fp = fopen(argv[1], "r");
+	if (fp == NULL)
 	{
-		dprintf(STDOUT_FILENO, "Error: Can't open file %s\n", argv[1]);
+		fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
 		exit(EXIT_FAILURE);
 	}
-	on_exit(free_lineptr, &lineptr);
-	on_exit(free_stack, &stack);
-	on_exit(m_fs_close, fs);
-	while (getline(&lineptr, &n, fs) != -1)
+	while ((charsprinted = getline(&linestr, &n, fp)) != -1)
 	{
-		line_number++;
-		op = strtok(lineptr, "\n\t\r ");
-		if (op != NULL && op[0] != '#')
-		{
-			get_op(op, &stack, line_number);
-		}
+		strtok_address = linestr;
+		linestr = strtok(linestr, "\n");
+		opcode = strtok(linestr, " ");
+		data = strtok(NULL, " ");
+
+		if (opcode)
+			execute(opcode, counter, data);
+		counter++;
 	}
-	exit(EXIT_SUCCESS);
+	fclose(fp);
+	free(strtok_address);
+	freestack();
+	return (0);
 }
